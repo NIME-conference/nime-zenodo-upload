@@ -53,12 +53,15 @@ with open(DOI_FILENAME, 'a') as doi_file:
 with open("secrets.toml", "rb") as f:
     secret_data = tomllib.load(f)
 
+# Token and Zenodo URL
+# You can fully test this program in the Zenodo sandbox to see all aspects of the upload
+# Extensive testing is suggested!
+# After testing, switch to the production token and URL.
 # Token in use
 TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
-# TOKEN = "doesn't-work"
-# TODO: once you are sure about what you are doing, remove the "sandbox." part
+# TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
 ZENODO_URL = 'https://sandbox.zenodo.org' 
-
+# ZENODO_URL = 'https://zenodo.org'
 
 def upload(metadata, pdf_path):
   ''' 
