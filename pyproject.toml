@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "nime-zenodo-upload"
+version = "0.1.0"
+description = "Program for uploading NIME proceedings PDFs and metadata to Zenodo and retrieving DOIs."
+authors = ["Benedikte Wallace <benediwa@ifi.uio.no>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+latexcodec = "^3.0.0"
+pybtex = "^0.24.0"
+click = "^8.1.7"
+requests = "^2.31.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
