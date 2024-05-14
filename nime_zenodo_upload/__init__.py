@@ -6,7 +6,7 @@ This script reads .bib files in NIME archive and creates a deposition record
 on the Zenodo website. The metadata from the .bib entries are tied to the 
 article (.pdf file) and are publishedd to Zenodo resulting in the creation 
 of a DOI. When this script is used to upload a new batch of papers the DOI
-and file name of each paper are added to the text file NIME_dois.txt. 
+and file name of each paper are added to the text file nime_dois.txt. 
 
 Additional files:
 
@@ -27,15 +27,22 @@ Special characters in the .bib file should be written in LaTeX code.
 import json
 import requests
 import datetime
+import latexcodec # TODO: remove this.
 import click
+import os
 import tomllib
+import pprint
 
 from pybtex.database.input import bibtex
 
 # Bibtex parser
 parser = bibtex.Parser()
 
-# New dois and file names are appended to the text file NIME_dois.txt 
+UPLOAD_FOLDER = './upload/'
+PUBLICATION_DATE = '2023-05-31'
+CONFERENCE_DATES = '31 May - 3 June, 2023'
+
+# New dois and file names are appended to the text file nime_dois.txt 
 DOI_FILENAME = "nime_dois.txt"
 
 # Add date and time for this upload
@@ -48,6 +55,7 @@ with open("secrets.toml", "rb") as f:
 
 # Token in use
 TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
+# TOKEN = "doesn't-work"
 # TODO: once you are sure about what you are doing, remove the "sandbox." part
 ZENODO_URL = 'https://sandbox.zenodo.org' 
 
@@ -62,20 +70,18 @@ def upload(metadata, pdf_path):
   - publishes it
   
   '''
-  print("\n ############## START UPLOAD: NEW FILE ############## \n")
-  print(metadata)
-
+  click.secho(f"Starting new upload for: {pdf_path}", fg='yellow')
   url = ZENODO_URL + '/api/deposit/depositions'
   access_depositions = requests.get(url, params={'access_token': TOKEN})
-  print("Access depositions: ", access_depositions.status_code)
+  click.secho(f"Access depositions: {access_depositions.status_code}", fg='yellow')
   # Create new paper submission - add parsed metadata
   headers = {"Content-Type": "application/json"}
   new_deposition = requests.post(url,params={'access_token': TOKEN}, json=metadata, headers=headers)
 
-  # If creation of new deposition is unsuccessfull, abort
+  # If creation of new deposition is unsuccessful, abort
   if new_deposition.status_code > 210:
-    print("Error happened during submission {}, status code: ".format(pdf_path) + str(new_deposition.status_code))
-    print(new_deposition.json())
+    click.secho("Error happened during submission {}, status code: ".format(pdf_path) + str(new_deposition.status_code), fg='red')
+    click.secho(new_deposition.json(), fg='red')
     return
 
   submission_id = json.loads(new_deposition.text)["id"]
@@ -83,64 +89,66 @@ def upload(metadata, pdf_path):
   # Upload the pdf file
   url = ZENODO_URL+"/api/deposit/depositions/{id}/files?access_token={token}".format(id=str(submission_id), token=TOKEN)
   upload_metadata = {'filename': 'paper.pdf'}
-  files = {'file': open(pdf_path, 'rb')}
-  add_file = requests.post(url, data=upload_metadata, files=files) # attempt to add files to record
+  with open(UPLOAD_FOLDER + pdf_path, 'rb') as pdf_file:
+    add_file = requests.post(url, data=upload_metadata, files={'file': pdf_file}) # attempt to add files to record
 
   # If upload of file is unsuccessful, abort
   if add_file.status_code > 210:
-    print("Error happened during file upload, status code: " + str(add_file.status_code))
-    print(add_file.json())
+    click.secho("Error happened during file upload, status code: " + str(add_file.status_code), fg='red')
+    click.secho(add_file.json(), fg='red')
     return
-  
-  # Checking to see if there exist additional files for this resource. NB! must have name 'xxxxxfile01.pdf'. 
-  pdf_fname = pdf_path[:-4]
-  extra1 = 'file01.pdf'
-  try:
-    extra_file = open(pdf_fname+extra1, 'rb')
-    files = {'file': extra_file}
-    upload_metadata = {'filename': 'paper.pdf'}
-    # attempt to add files to record
-    add_file = requests.post(url, data=upload_metadata, files=files)
-    # If upload of file is unsuccessfull, abort
-    if add_file.status_code > 210:
-      print("Error happened during file upload, status code: " + str(add_file.status_code))
-      print(add_file.json())
-      return
-  except FileNotFoundError:
-    pass	
-  
-  print("{file} submitted with submission ID = {id} (DOI: 10.5281/zenodo.{id})".format(file=pdf_path,id=submission_id))    
 
+  click.secho(f"{pdf_path} submitted with ID {submission_id}", fg='green')
+
+  # TODO: Revise this additional files stuff.
+  # # Checking to see if there exist additional files for this resource. NB! must have name 'xxxxxfile01.pdf'. 
+  # pdf_fname = pdf_path[:-4]
+  # extra1 = 'file01.pdf'
+  # try:
+  #   extra_file = open(pdf_fname+extra1, 'rb')
+  #   files = {'file': extra_file}
+  #   upload_metadata = {'filename': 'paper.pdf'}
+  #   # attempt to add files to record
+  #   add_file = requests.post(url, data=upload_metadata, files=files)
+  #   # If upload of file is unsuccessfull, abort
+  #   if add_file.status_code > 210:
+  #     click.secho("Error happened during file upload, status code: " + str(add_file.status_code), fg='red')
+  #     click.secho(add_file.json(), fg='red')
+  #     return
+  # except FileNotFoundError:
+  #   pass	
+  
   # publish the new deposition
   publish_record = requests.post(ZENODO_URL+'/api/deposit/depositions/%s/actions/publish' % submission_id,params={'access_token': TOKEN})
-
-  # If publish unsuccessfull, abort
+  # If publish unsuccessful, abort
   if publish_record.status_code > 210:
-    print("Error happened during file upload, status code: " + str(publish_record.status_code))
-    print(publish_record.json())
+    click.secho("Error happened during file upload, status code: " + str(publish_record.status_code), fg='red')
+    click.secho(publish_record.json(), fg='red')
     return
+  click.secho(f"{pdf_path} PUBLISHED with ID {submission_id}", fg='green')
 
-  print("{file} PUBLISHED with submission ID = {id} (DOI: 10.5281/zenodo.{id})".format(file=pdf_path,id=submission_id))
+  # get back the deposition to confirm the DOI (it's usually/always the submission ID but good to be sure)
+  retrieved_deposition = requests.get(f"{ZENODO_URL}/api/deposit/depositions/{submission_id}", params={'access_token': TOKEN})
+  retrieved_doi = retrieved_deposition.json()['doi']
+  click.secho(f"{pdf_path} confirmed DOI is {retrieved_doi}", fg='green')
+
+  # Record in the csv file.
   with open(DOI_FILENAME, 'a') as doi_file:
-    doi_file.write('Filename: {} DOI: 10.5281/zenodo.{}\n'.format(*[pdf_path, submission_id]))
+    doi_file.write(f'{pdf_path},{submission_id},{retrieved_doi}\n')
 
 
-def format_metadata(bibfilename=None):
+def format_metadata(bibfilename):
   ''' 
   format_metadata(bibfilename):
   - formats contents of entries in the .bib file referenced by bibfilename
   - for each entry, metadata is formatted and the upload function 
   above is called in order to publish record
   '''
-  if bibfilename == None:
-    print("Missing .bib file")
-    return
-
   bibdata = parser.parse_file(bibfilename)
 
   title = 'title'
   abstract = 'abstract'
-  address = 'adress'
+  address = 'address'
   creators = 'creators'
   pubdate = '20XX-06-01'
   pages = 'x-x'
@@ -152,7 +160,7 @@ def format_metadata(bibfilename=None):
   for bib_id in bibdata.entries:
     title = 'title'
     abstract = 'abstract'
-    address = 'adress'
+    address = 'address'
     creators = 'creators'
     pubdate = '20XX-06-01'
     pages = 'x-x'
@@ -165,17 +173,19 @@ def format_metadata(bibfilename=None):
       conf_url = b['Url']
       pdf_name = conf_url.rsplit('/', 1)[-1]
 
+      if not os.path.exists(UPLOAD_FOLDER + pdf_name):
+        click.secho(f'PDF: {pdf_name} does not exist in the upload folder!', fg='red')
+        raise Exception(f'The PDF {pdf_name} did not exist in the upload folder.')
+
       title = b['Title']
-      for author in bibdata.entries[bib_id].persons["Author"]:    
-        names = {}
-        tex = bytes(str(author),"utf-8")
-        decoded_tex = tex.decode("latex","ignore")
-        cleaned_tex = decoded_tex.replace("}","")
-        cleaned_tex = cleaned_tex.replace("{","")
-        cleaned_tex = cleaned_tex.replace("\\\"","")
-        names['name'] = cleaned_tex 
-        
-        creators.append(names)
+      for author in bibdata.entries[bib_id].persons["Author"]:
+        author_name = str(author) 
+        # TODO: would be better to use https://github.com/phfaist/pylatexenc for decoding latex characters
+        # author_name = bytes(author_name,"utf-8").decode("latex","ignore") # TODO: this decoding scheme works for Latex encoded special characters but not UTF-8 which is the current norm.
+        author_name = author_name.replace("}","")
+        author_name = author_name.replace("{","")
+        author_name = author_name.replace("\\\"","")
+        creators.append({'name': author_name})
 
       yr_seg = conf_url.rsplit('/', 1)[-2]
       yr = yr_seg.rsplit('/', 1)[-1]
@@ -184,6 +194,7 @@ def format_metadata(bibfilename=None):
       address = b.get('Address', 'Address')
       pages = b.get('Pages', 'x-x')
       abstract = b.get('Abstract', '---') # if no abstract is found, --- will be used as default
+      track = b.get('track') # could be used for conference_session key
 
       data = {
       'metadata': {
@@ -191,29 +202,27 @@ def format_metadata(bibfilename=None):
       'upload_type': 'publication', 
       'publication_type' : 'conferencepaper',
       'description': abstract,
-      'conference_place': address,
       'conference_title':'International Conference on New Interfaces for Musical Expression',
-      'publication_date' : pubdate,
+      'conference_acronym':'NIME',
+      'conference_dates': CONFERENCE_DATES, # hard coded, needs to be fixed
+      'conference_place': address,
+      'conference_url':'https://nime.org',
+      'publication_date' : PUBLICATION_DATE, # pubdate, # TODO fix this aspect
       'partof_pages' : pages,
       'partof_title' : 'Proceedings of the International Conference on New Interfaces for Musical Expression',
       'creators': creators,
       'communities': [{'identifier': 'nime_conference'}] # adds the record to the zenodo NIME community
       }}
 
-      upload(data,pdf_name)
+      # pprint.pp(data['metadata'])
+      upload(data, pdf_name)
 
     except(KeyError): # TODO Write failed bib ID's to a text file?
       print("KeyError! Entry did not contain fields needed, continuing to next id - failed bib id: ", bib_id)
-      continue
+      raise
 
 
-  
-if __name__ == '__main__':
-  # Bibtex file to be used for the upload
-  bibfile = 'upload/zenodo.bib'
-  # Begin upload by formatting metadata. This function calls the upload function for each entry in the .bib file
-  format_metadata(bibfile)
-  # Closes the text file after all files are uploaded.
-  doi_file.close()
-
-
+# Bibtex file to be used for the upload
+bibfile = UPLOAD_FOLDER + 'zenodo.bib'
+# Begin upload by formatting metadata. This function calls the upload function for each entry in the .bib file
+format_metadata(bibfile)
