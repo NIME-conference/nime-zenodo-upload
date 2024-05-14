@@ -10,6 +10,8 @@ readme = "README.md"
 python = "^3.11"
 latexcodec = "^3.0.0"
 pybtex = "^0.24.0"
+click = "^8.1.7"
+requests = "^2.31.0"
 
 
 [build-system]

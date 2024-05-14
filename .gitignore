@@ -1,5 +1,6 @@
 secrets.toml
 upload/*
+nime_dois.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
