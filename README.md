@@ -59,11 +59,15 @@ It's a good idea to check the author names carefully as they may have been proce
 
 Typically you would run the checks many times to make sure the metadata is perfect.
 
-When your metadata is ready you can try uploading:
+When your metadata is ready you can try uploading to the sandbox server:
 
     poetry run python nime_zenodo_upload upload upload/nime2023_music.bib
 
-By default, the program uploads to the Zenodo sandbox, you'll have to change the code manually to upload to production Zenodo (feels too dangerous to make it a cli command at the moment!). Look inside `nime_zenodo_upload/__main__.py` to find out how to do that.
+By default, the program uploads to the Zenodo sandbox. When you are **absolutely ready to commit to the production server** you can run:
+
+    poetry run python nime_zenodo_upload upload upload/nime2023_music.bib --production
+
+to do you final uploads.
 
 ## Conference Metadata
 

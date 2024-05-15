@@ -52,14 +52,6 @@ with open(DOI_FILENAME, 'a') as doi_file:
 with open("secrets.toml", "rb") as f:
     secret_data = tomllib.load(f)
 
-# Token and Zenodo URL
-# You can fully test this program in the Zenodo sandbox to see all aspects of the upload
-# Extensive testing is suggested!
-# After testing, switch to the production token and URL.
-# Token in use
-TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
-# TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
-
 
 def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   ''' 
@@ -69,13 +61,14 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   - enters metadata, 
   - uploads the .pdf and 
   - publishes it
-  
   '''
 
   if production_zenodo:
     ZENODO_URL = 'https://zenodo.org'
+    TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
   else:
-    ZENODO_URL = 'https://sandbox.zenodo.org' 
+    ZENODO_URL = 'https://sandbox.zenodo.org'
+    TOKEN = secret_data['SANDBOX_TOKEN']
 
   click.secho(f"Starting new upload for: {pdf_path} to {ZENODO_URL}", fg='yellow')
   url = ZENODO_URL + '/api/deposit/depositions'
@@ -248,6 +241,11 @@ def upload(bibfile, production):
   """Process metadata from a .bibtex file and upload to Zenodo."""
   # Bibtex file to be used for the upload
   # bibfile = UPLOAD_FOLDER + 'zenodo.bib'
+  if production:
+    click.secho("WARNING! You are uploading to the production Zenodo server! Make sure you are ready! Cancel if not!", fg="red")
+  else:
+    click.secho("You are uploading to the sandbox Zenodo server! Test here as much as you want.", fg="green")
+  wait = input("Press Enter to continue or Ctrl-C to abort.")
   format_metadata(bibfile, upload_pdf=True, verbose=False, print_authors=False, production_zenodo=production)
 
 
