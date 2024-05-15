@@ -59,10 +59,9 @@ with open("secrets.toml", "rb") as f:
 # Token in use
 # TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
 TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
-# ZENODO_URL = 'https://sandbox.zenodo.org' 
-ZENODO_URL = 'https://zenodo.org'
 
-def upload_to_zenodo(metadata, pdf_path):
+
+def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   ''' 
   upload(metadata, pdf_path):
   - connects to zenodo REST API, 
@@ -72,6 +71,12 @@ def upload_to_zenodo(metadata, pdf_path):
   - publishes it
   
   '''
+
+  if production_zenodo:
+    ZENODO_URL = 'https://zenodo.org'
+  else:
+    ZENODO_URL = 'https://sandbox.zenodo.org' 
+
   click.secho(f"Starting new upload for: {pdf_path} to {ZENODO_URL}", fg='yellow')
   url = ZENODO_URL + '/api/deposit/depositions'
   access_depositions = requests.get(url, params={'access_token': TOKEN})
@@ -139,7 +144,7 @@ def upload_to_zenodo(metadata, pdf_path):
     doi_file.write(f'{pdf_path},{submission_id},{retrieved_doi}\n')
 
 
-def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=False):
+def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=False, production_zenodo=False):
   ''' 
   format_metadata(bibfilename):
   - formats contents of entries in the .bib file referenced by bibfilename
@@ -229,7 +234,7 @@ def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=
         pprint.pp(data['metadata'])
       
       if upload_pdf:
-        upload_to_zenodo(data, pdf_name)
+        upload_to_zenodo(data, pdf_name, production_zenodo=production_zenodo)
 
     except(KeyError): # TODO Write failed bib ID's to a text file?
       print("KeyError! Entry did not contain fields needed, continuing to next id - failed bib id: ", bib_id)
@@ -238,11 +243,12 @@ def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=
 
 @click.command()
 @click.argument('bibfile', type=click.Path(exists=True))
-def upload(bibfile):
+@click.option('--production', is_flag=True)
+def upload(bibfile, production):
   """Process metadata from a .bibtex file and upload to Zenodo."""
   # Bibtex file to be used for the upload
   # bibfile = UPLOAD_FOLDER + 'zenodo.bib'
-  format_metadata(bibfile, upload_pdf=True, verbose=False, print_authors=False)
+  format_metadata(bibfile, upload_pdf=True, verbose=False, print_authors=False, production_zenodo=production)
 
 
 @click.command()
@@ -252,9 +258,9 @@ def check(bibfile, authors):
   """Process metadata from a .bibtex file and print out to check it."""
   # bibfile = UPLOAD_FOLDER + 'zenodo.bib'
   if authors:
-    format_metadata(bibfile, upload_pdf=False, verbose=False, print_authors=True)
+    format_metadata(bibfile, upload_pdf=False, verbose=False, print_authors=True, production_zenodo=False)
   else:
-    format_metadata(bibfile, upload_pdf=False, verbose=True, print_authors=False)
+    format_metadata(bibfile, upload_pdf=False, verbose=True, print_authors=False, production_zenodo=False)
 
 
 @click.group()
