@@ -57,8 +57,8 @@ with open("secrets.toml", "rb") as f:
 # Extensive testing is suggested!
 # After testing, switch to the production token and URL.
 # Token in use
-# TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
-TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
+TOKEN = secret_data['SANDBOX_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
+# TOKEN = secret_data['PUBLIC_TOKEN'] # either SANDBOX_TOKEN or PUBLIC_TOKEN
 
 
 def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
