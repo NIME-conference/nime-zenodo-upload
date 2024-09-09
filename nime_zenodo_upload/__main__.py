@@ -37,8 +37,8 @@ from pybtex.database.input import bibtex
 parser = bibtex.Parser()
 
 UPLOAD_FOLDER = './upload/'
-PUBLICATION_DATE = '2023-05-31'
-CONFERENCE_DATES = '31 May - 3 June, 2023'
+PUBLICATION_DATE = '2024-09-10'
+CONFERENCE_DATES = '4 September - 6 September, 2024'
 CONFERENCE_TITLE = 'International Conference on New Interfaces for Musical Expression'
 CONFERENCE_ACRONYM = 'NIME'
 
