@@ -199,6 +199,8 @@ def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=
       track = b.get('track') # could be used for conference_session key
       partof_title = b.get('booktitle')
       conf_session = b.get('note', None)
+      isbn = b.get('isbn')
+      issn = b.get('issn')
 
       data = {
       'metadata': {
@@ -214,7 +216,9 @@ def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=
       'publication_date' : PUBLICATION_DATE, # pubdate, # TODO fix this aspect
       'partof_title' : partof_title,
       'creators': creators,
-      'communities': [{'identifier': 'nime_conference'}] # adds the record to the zenodo NIME community
+      'communities': [{'identifier': 'nime_conference'}], # adds the record to the zenodo NIME community
+      'imprint_isbn': isbn,
+      'journal_issn': issn
       }}
 
       if conf_session is not None:
