@@ -24,13 +24,17 @@ Special characters in the .bib file should be written in UTF-8 symbols (not late
 import json
 import requests
 import datetime
-import latexcodec # TODO: remove this.
+#import latexcodec # TODO: remove this.
 import click
 import os
 import tomllib
 import pprint
 
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 from pybtex.database.input import bibtex
+
 
 # Bibtex parser
 parser = bibtex.Parser()
@@ -69,13 +73,19 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
     ZENODO_URL = 'https://sandbox.zenodo.org'
     TOKEN = secret_data['SANDBOX_TOKEN']
 
+  session = requests.Session()
+  retry = Retry(connect=3, backoff_factor=0.5)
+  adapter = HTTPAdapter(max_retries=retry)
+  session.mount('http://', adapter)
+  session.mount('https://', adapter)
+
   click.secho(f"Starting new upload for: {pdf_path} to {ZENODO_URL}", fg='yellow')
   url = ZENODO_URL + '/api/deposit/depositions'
-  access_depositions = requests.get(url, params={'access_token': TOKEN})
+  access_depositions = session.get(url, params={'access_token': TOKEN})
   click.secho(f"Access depositions: {access_depositions.status_code}", fg='yellow')
   # Create new paper submission - add parsed metadata
   headers = {"Content-Type": "application/json"}
-  new_deposition = requests.post(url,params={'access_token': TOKEN}, json=metadata, headers=headers)
+  new_deposition = session.post(url,params={'access_token': TOKEN}, json=metadata, headers=headers)
 
   # If creation of new deposition is unsuccessful, abort
   if new_deposition.status_code > 210:
@@ -89,7 +99,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   url = ZENODO_URL+"/api/deposit/depositions/{id}/files?access_token={token}".format(id=str(submission_id), token=TOKEN)
   upload_metadata = {'filename': pdf_path}
   with open(UPLOAD_FOLDER + pdf_path, 'rb') as pdf_file:
-    add_file = requests.post(url, data=upload_metadata, files={'file': pdf_file}) # attempt to add files to record
+    add_file = session.post(url, data=upload_metadata, files={'file': pdf_file}) # attempt to add files to record
 
   # If upload of file is unsuccessful, abort
   if add_file.status_code > 210:
@@ -107,7 +117,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
     
       upload_metadata = {'filename': extra_file_path}
       with open(UPLOAD_FOLDER + extra_file_path, 'rb') as extra_file:
-        add_file = requests.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record  
+        add_file = session.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record  
         
         # If upload of file is unsuccessfull, abort
         if add_file.status_code > 210:
@@ -116,7 +126,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
           return
   
   # publish the new deposition
-  publish_record = requests.post(ZENODO_URL+'/api/deposit/depositions/%s/actions/publish' % submission_id,params={'access_token': TOKEN})
+  publish_record = session.post(ZENODO_URL+'/api/deposit/depositions/%s/actions/publish' % submission_id,params={'access_token': TOKEN})
   # If publish unsuccessful, abort
   if publish_record.status_code > 210:
     click.secho("Error happened during file upload, status code: " + str(publish_record.status_code), fg='red')
@@ -125,7 +135,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   click.secho(f"{pdf_path} PUBLISHED with ID {submission_id}", fg='green')
 
   # get back the deposition to confirm the DOI (it's usually/always the submission ID but good to be sure)
-  retrieved_deposition = requests.get(f"{ZENODO_URL}/api/deposit/depositions/{submission_id}", params={'access_token': TOKEN})
+  retrieved_deposition = session.get(f"{ZENODO_URL}/api/deposit/depositions/{submission_id}", params={'access_token': TOKEN})
   retrieved_doi = retrieved_deposition.json()['doi']
   click.secho(f"{pdf_path} confirmed DOI is {retrieved_doi}", fg='green')
 
