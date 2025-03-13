@@ -1,6 +1,6 @@
 ########################################################
 '''
-Written by Benedikte Wallace, 2018.
+Written by Benedikte Wallace, 2018, edited by Charles Martin, 2024, and Stefano Fasciani 2025.
 
 This script reads .bib files in NIME archive and creates a deposition record 
 on the Zenodo website. The metadata from the .bib entries are tied to the 
@@ -10,10 +10,9 @@ and file name of each paper are added to the text file nime_dois.txt.
 
 Additional files:
 
-If a resource contains an additional file that should be uploaded together with the paper
-this additional file should have the same file name with an additional file01 appended to the end.
+If a resource contains supplementary files that should be uploaded together with the paper this 
+additional file should have the same file name with an additional _file01 _file02 etc.  appended to the end.
 Zenodo displays the files alphabetically.
-today this script only allows for adding one additional file per resource.
 
 The .bib file:
 
@@ -37,7 +36,7 @@ from pybtex.database.input import bibtex
 parser = bibtex.Parser()
 
 UPLOAD_FOLDER = './upload/'
-PUBLICATION_DATE = '2024-10-08'
+PUBLICATION_DATE = '2025-03-16'
 CONFERENCE_DATES = '4 September - 6 September, 2024'
 CONFERENCE_TITLE = 'International Conference on New Interfaces for Musical Expression'
 CONFERENCE_ACRONYM = 'NIME'
@@ -59,7 +58,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   - connects to zenodo REST API, 
   - creates a new record, 
   - enters metadata, 
-  - uploads the .pdf and 
+  - uploads the .pdf and supplementary files
   - publishes it
   '''
 
@@ -88,7 +87,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
 
   # Upload the pdf file
   url = ZENODO_URL+"/api/deposit/depositions/{id}/files?access_token={token}".format(id=str(submission_id), token=TOKEN)
-  upload_metadata = {'filename': 'paper.pdf'}
+  upload_metadata = {'filename': pdf_path}
   with open(UPLOAD_FOLDER + pdf_path, 'rb') as pdf_file:
     add_file = requests.post(url, data=upload_metadata, files={'file': pdf_file}) # attempt to add files to record
 
@@ -100,23 +99,22 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
 
   click.secho(f"{pdf_path} submitted with ID {submission_id}", fg='green')
 
-  # TODO: Revise this additional files stuff.
-  # # Checking to see if there exist additional files for this resource. NB! must have name 'xxxxxfile01.pdf'. 
-  # pdf_fname = pdf_path[:-4]
-  # extra1 = 'file01.pdf'
-  # try:
-  #   extra_file = open(pdf_fname+extra1, 'rb')
-  #   files = {'file': extra_file}
-  #   upload_metadata = {'filename': 'paper.pdf'}
-  #   # attempt to add files to record
-  #   add_file = requests.post(url, data=upload_metadata, files=files)
-  #   # If upload of file is unsuccessfull, abort
-  #   if add_file.status_code > 210:
-  #     click.secho("Error happened during file upload, status code: " + str(add_file.status_code), fg='red')
-  #     click.secho(add_file.json(), fg='red')
-  #     return
-  # except FileNotFoundError:
-  #   pass	
+  all_files = os.listdir(UPLOAD_FOLDER)
+  pdf_fname = pdf_path[:-4]
+  matching_files = [file for file in all_files if file.startswith(pdf_fname)]
+  for extra_file_path in matching_files:
+    if extra_file_path != pdf_path:
+    
+      upload_metadata = {'filename': extra_file_path}
+      print('AAAAA', upload_metadata)
+      with open(UPLOAD_FOLDER + extra_file_path, 'rb') as extra_file:
+        add_file = requests.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record  
+        
+        # If upload of file is unsuccessfull, abort
+        if add_file.status_code > 210:
+          click.secho("Error happened during file upload, status code: " + str(add_file.status_code), fg='red')
+          click.secho(add_file.json(), fg='red')
+          return
   
   # publish the new deposition
   publish_record = requests.post(ZENODO_URL+'/api/deposit/depositions/%s/actions/publish' % submission_id,params={'access_token': TOKEN})
@@ -135,6 +133,7 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
   # Record in the csv file.
   with open(DOI_FILENAME, 'a') as doi_file:
     doi_file.write(f'{pdf_path},{submission_id},{retrieved_doi}\n')
+
 
 
 def format_metadata(bibfilename, verbose=False, upload_pdf=False, print_authors=False, production_zenodo=False):

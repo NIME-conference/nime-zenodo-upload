@@ -102,3 +102,4 @@ The .bib file: Special characters in the .bib file should be written with UTF-8 
 
 - Thanks to [Benedikte Wallace](https://www.linkedin.com/in/benedikte-wallace-8b489782/) for developing the Zenodo upload script in 2017-2018 or so.
 - Charles Martin did some work on this in 2024.
+- Stefano Fasciani did some work on this in 2025.
