@@ -106,7 +106,6 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
     if extra_file_path != pdf_path:
     
       upload_metadata = {'filename': extra_file_path}
-      print('AAAAA', upload_metadata)
       with open(UPLOAD_FOLDER + extra_file_path, 'rb') as extra_file:
         add_file = requests.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record  
         
