@@ -38,7 +38,7 @@ from pybtex.database.input import bibtex
 parser = bibtex.Parser()
 
 UPLOAD_FOLDER = './upload/'
-PUBLICATION_DATE = '2025-03-16'
+PUBLICATION_DATE = '2025-03-14'
 CONFERENCE_DATES = '4 September - 6 September, 2024'
 CONFERENCE_TITLE = 'International Conference on New Interfaces for Musical Expression'
 CONFERENCE_ACRONYM = 'NIME'
@@ -99,23 +99,24 @@ def upload_to_zenodo(metadata, pdf_path, production_zenodo=False):
     click.secho(add_file.json(), fg='red')
     return
 
-  click.secho(f"{pdf_path} submitted with ID {submission_id}", fg='green')
-
   all_files = os.listdir(UPLOAD_FOLDER)
-  pdf_fname = pdf_path[:-4]
+  pdf_fname = pdf_path[:-4]+"_"
   matching_files = [file for file in all_files if file.startswith(pdf_fname)]
   for extra_file_path in matching_files:
     if extra_file_path != pdf_path:
-    
+      
+      click.secho(f"Starting upload for supplementary file: {extra_file_path} to {ZENODO_URL}", fg='yellow')
       upload_metadata = {'filename': extra_file_path}
       with open(UPLOAD_FOLDER + extra_file_path, 'rb') as extra_file:
-        add_file = requests.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record  
+        add_file = requests.post(url, data=upload_metadata, files={'file': extra_file}) # attempt to add files to record
         
         # If upload of file is unsuccessfull, abort
         if add_file.status_code > 210:
           click.secho("Error happened during file upload, status code: " + str(add_file.status_code), fg='red')
           click.secho(add_file.json(), fg='red')
           return
+        
+  click.secho(f"{pdf_path} submitted with ID {submission_id}", fg='green')
   
   # publish the new deposition
   publish_record = requests.post(ZENODO_URL+'/api/deposit/depositions/%s/actions/publish' % submission_id,params={'access_token': TOKEN})
